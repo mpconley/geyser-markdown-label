@@ -9,7 +9,7 @@ end
 
 Geyser.MarkdownLabel = Geyser.Label:new({
   name = "MarkdownLabelClass",
-  eventHandlerId = nil,
+  eventHandlerName = nil,
   eventName = nil,
   eventPayloadIndex = 2,
   lastMarkdown = nil,
@@ -26,7 +26,7 @@ function Geyser.MarkdownLabel:new(cons, container)
 
   me.lastMarkdown = nil
   me.lastRenderedHtml = nil
-  me.eventHandlerId = nil
+  me.eventHandlerName = nil
   me.eventName = nil
   me.eventPayloadIndex = cons.eventPayloadIndex or 2
 
@@ -64,7 +64,9 @@ function Geyser.MarkdownLabel:subscribeEvent(eventName, payloadIndex)
   self.eventPayloadIndex = payloadIndex or self.eventPayloadIndex or 2
 
   local handlerName = self.name .. "_markdown_event"
-  self.eventHandlerId = registerNamedEventHandler(handlerName, self.eventName, function(...)
+  self.eventHandlerName = handlerName
+
+  registerNamedEventHandler("geyser-markdown", handlerName, self.eventName, function(...)
     local args = { ... }
     local payload = args[self.eventPayloadIndex]
     if payload == nil then
@@ -73,16 +75,16 @@ function Geyser.MarkdownLabel:subscribeEvent(eventName, payloadIndex)
     self:setContent(tostring(payload))
   end)
 
-  return self.eventHandlerId
+  return true
 end
 
 function Geyser.MarkdownLabel:unsubscribeEvent()
-  if not self.eventHandlerId then
+  if not self.eventHandlerName then
     return
   end
 
-  killAnonymousEventHandler(self.eventHandlerId)
-  self.eventHandlerId = nil
+  deleteNamedEventHandler("geyser-markdown", self.eventHandlerName)
+  self.eventHandlerName = nil
 end
 
 function Geyser.MarkdownLabel:destroy()
