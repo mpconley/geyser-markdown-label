@@ -9,7 +9,27 @@
     <Script isActive="yes" isFolder="no">
       <name>Geyser Markdown Bootstrap</name>
       <packageName></packageName>
-      <script>dofile(getMudletHomeDir() .. "/packages/geyser-markdown/lua/init.lua")</script>
+      <script>local home = getMudletHomeDir()
+local candidates = {
+  home .. "/geyser-markdown",
+  home .. "/geyser-markdown-label",
+  home .. "/packages/geyser-markdown",
+}
+
+local root
+for _, path in ipairs(candidates) do
+  if io.exists(path .. "/lua/init.lua") then
+    root = path
+    break
+  end
+end
+
+if not root then
+  error("Geyser Markdown package could not locate lua/init.lua in expected package directories")
+end
+
+_G.GeyserMarkdownPackageRoot = root
+dofile(root .. "/lua/init.lua")</script>
       <eventHandlerList />
     </Script>
   </ScriptPackage>
