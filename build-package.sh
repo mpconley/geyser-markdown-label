@@ -15,7 +15,8 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 pushd "$SRC_DIR" >/dev/null
-zip -r "$OUTPUT" . >/dev/null
+# Build a deterministic zip: sorted file order and no extra file attributes.
+LC_ALL=C find . -type f | sort | zip -X -q "$OUTPUT" -@
 popd >/dev/null
 
 echo "Built: $OUTPUT"
