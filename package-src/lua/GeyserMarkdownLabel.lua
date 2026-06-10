@@ -7,22 +7,33 @@ if not Geyser or not Geyser.Label then
   error("Geyser must be loaded before Geyser.MarkdownLabel")
 end
 
-Geyser.MarkdownLabel = Geyser.Label:new({
+Geyser.MarkdownLabel = {
+  format = "",
+  font = "",
+  args = "",
+  fillBg = 1,
   name = "MarkdownLabelClass",
   eventHandlerName = nil,
   eventName = nil,
   eventPayloadIndex = 2,
   lastMarkdown = nil,
   lastRenderedHtml = nil,
-})
+}
+Geyser.MarkdownLabel.parent = Geyser.Label
+setmetatable(Geyser.MarkdownLabel, Geyser.Label)
+Geyser.MarkdownLabel.__index = Geyser.MarkdownLabel
 
 function Geyser.MarkdownLabel:new(cons, container)
   cons = cons or {}
+  local consType = type(cons)
+  if consType ~= "table" then
+    printError(string.format("bad argument #1 type (cons as table expected, got %s)", consType), true, true)
+  end
+
   cons.name = cons.name or Geyser.nameGen("markdownlabel")
 
-  local me = Geyser.Label:new(cons, container)
+  local me = self.parent:new(cons, container)
   setmetatable(me, self)
-  self.__index = self
 
   me.lastMarkdown = nil
   me.lastRenderedHtml = nil
