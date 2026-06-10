@@ -48,7 +48,6 @@ end
 function Geyser.MarkdownLabel:echo(markdown)
   markdown = markdown or ""
   if markdown == self.lastMarkdown and self.lastRenderedHtml then
-    Geyser.Label.rawEcho(self, self.lastRenderedHtml)
     return
   end
 

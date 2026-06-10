@@ -19,6 +19,10 @@ local function trim(text)
   return (text:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+local function starts_with(text, prefix)
+  return text:sub(1, #prefix) == prefix
+end
+
 local function parse_inline(text)
   local code_spans = {}
   local index = 0
@@ -57,10 +61,20 @@ local function is_table_separator(line)
   if not line:find("|") then
     return false
   end
-  local candidate = trim(line)
-  candidate = candidate:gsub("|", "")
-  candidate = candidate:gsub(" ", "")
-  return candidate:match("^:?-+:?:?-*:?$") ~= nil or candidate:match("^[-:]+$") ~= nil
+
+  local row = trim(line)
+  row = row:gsub("^|", ""):gsub("|$", "")
+
+  local has_column = false
+  for cell in row:gmatch("([^|]+)") do
+    has_column = true
+    local cleaned = trim(cell)
+    if cleaned == "" or not cleaned:match("^:?-+:?$") then
+      return false
+    end
+  end
+
+  return has_column
 end
 
 local function split_table_row(line)
@@ -76,6 +90,7 @@ end
 function MarkdownAdapter.render(markdown)
   markdown = markdown or ""
   markdown = markdown:gsub("\r\n", "\n")
+  markdown = markdown:gsub("\r", "\n")
 
   local lines = {}
   for line in (markdown .. "\n"):gmatch("(.-)\n") do
@@ -118,6 +133,14 @@ function MarkdownAdapter.render(markdown)
 
     if line == "" then
       close_lists()
+      i = i + 1
+      goto continue
+    end
+
+    local trimmed = trim(line)
+    if trimmed:match("^[-*_][-%*_][-%*_]+$") then
+      close_lists()
+      out[#out + 1] = "<hr/>"
       i = i + 1
       goto continue
     end
@@ -165,8 +188,8 @@ function MarkdownAdapter.render(markdown)
       goto continue
     end
 
-    local ordered_index, ordered_text = line:match("^%s*(%d+)%.%s+(.+)$")
-    if ordered_index then
+    local ordered_text = line:match("^%s*%d+%.%s+(.+)$")
+    if ordered_text then
       if list_stack[#list_stack] ~= "ol" then
         close_lists()
         out[#out + 1] = "<ol>"
@@ -186,13 +209,17 @@ function MarkdownAdapter.render(markdown)
       end
       local task_checked, task_text = unordered_text:match("^%[([ xX])%]%s+(.+)$")
       if task_checked then
-        local checkbox = task_checked:lower() == "x" and "[x] " or "[ ] "
+        local checkbox = task_checked:lower() == "x" and "☑ " or "☐ "
         out[#out + 1] = "<li>" .. checkbox .. parse_inline(task_text) .. "</li>"
       else
         out[#out + 1] = "<li>" .. parse_inline(unordered_text) .. "</li>"
       end
       i = i + 1
       goto continue
+    end
+
+    if starts_with(trimmed, "\\") then
+      line = trimmed:sub(2)
     end
 
     close_lists()
