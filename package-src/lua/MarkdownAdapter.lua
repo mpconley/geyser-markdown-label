@@ -129,6 +129,7 @@ function MarkdownAdapter.render(markdown)
 
   while i <= #lines do
     local line = lines[i]
+    local handled = false
 
     if line:match("^%s*```") then
       close_lists()
@@ -140,30 +141,30 @@ function MarkdownAdapter.render(markdown)
         out[#out + 1] = "</code></pre>"
       end
       i = i + 1
-      goto continue
+      handled = true
     end
 
-    if in_code_block then
+    if not handled and in_code_block then
       out[#out + 1] = escape_html(line)
       i = i + 1
-      goto continue
+      handled = true
     end
 
-    if line == "" then
+    if not handled and line == "" then
       close_lists()
       i = i + 1
-      goto continue
+      handled = true
     end
 
     local trimmed = trim(line)
-    if trimmed:match("^[-*_][-%*_][-%*_]+$") then
+    if not handled and trimmed:match("^[-*_][-%*_][-%*_]+$") then
       close_lists()
       out[#out + 1] = "<hr/>"
       i = i + 1
-      goto continue
+      handled = true
     end
 
-    if i + 1 <= #lines and line:find("|") and is_table_separator(lines[i + 1]) then
+    if not handled and i + 1 <= #lines and line:find("|") and is_table_separator(lines[i + 1]) then
       close_lists()
       local header_cells = split_table_row(line)
       out[#out + 1] = "<table border=\"1\" cellspacing=\"0\" cellpadding=\"4\">"
@@ -183,11 +184,11 @@ function MarkdownAdapter.render(markdown)
         i = i + 1
       end
       out[#out + 1] = "</tbody></table>"
-      goto continue
+      handled = true
     end
 
     local heading_level, heading_text = line:match("^(#+)%s+(.+)$")
-    if heading_level then
+    if not handled and heading_level then
       close_lists()
       local level = #heading_level
       if level > 6 then
@@ -195,27 +196,27 @@ function MarkdownAdapter.render(markdown)
       end
       out[#out + 1] = string.format("<h%d>%s</h%d>", level, parse_inline(heading_text), level)
       i = i + 1
-      goto continue
+      handled = true
     end
 
     local quote = line:match("^>%s?(.*)$")
-    if quote then
+    if not handled and quote then
       close_lists()
       out[#out + 1] = "<blockquote>" .. parse_inline(quote) .. "</blockquote>"
       i = i + 1
-      goto continue
+      handled = true
     end
 
     local ordered_indent, ordered_text = line:match("^(%s*)%d+%.%s+(.+)$")
-    if ordered_text then
+    if not handled and ordered_text then
       ensure_list("ol", #ordered_indent)
       out[#out + 1] = "<li>" .. parse_inline(ordered_text) .. "</li>"
       i = i + 1
-      goto continue
+      handled = true
     end
 
     local unordered_indent, unordered_text = line:match("^(%s*)[-%*+]%s+(.+)$")
-    if unordered_text then
+    if not handled and unordered_text then
       ensure_list("ul", #unordered_indent)
       local task_checked, task_text = unordered_text:match("^%[([ xX])%]%s+(.+)$")
       if task_checked then
@@ -225,18 +226,18 @@ function MarkdownAdapter.render(markdown)
         out[#out + 1] = "<li>" .. parse_inline(unordered_text) .. "</li>"
       end
       i = i + 1
-      goto continue
+      handled = true
     end
 
-    if starts_with(trimmed, "\\") then
-      line = trimmed:sub(2)
+    if not handled then
+      if starts_with(trimmed, "\\") then
+        line = trimmed:sub(2)
+      end
+
+      close_lists()
+      out[#out + 1] = "<p>" .. parse_inline(line) .. "</p>"
+      i = i + 1
     end
-
-    close_lists()
-    out[#out + 1] = "<p>" .. parse_inline(line) .. "</p>"
-
-    i = i + 1
-    ::continue::
   end
 
   close_lists()
