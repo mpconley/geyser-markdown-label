@@ -15,6 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Lua runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4
+          sudo ln -sf /usr/bin/lua5.4 /usr/local/bin/lua
+
       - name: Run adapter tests
         run: make test
 
