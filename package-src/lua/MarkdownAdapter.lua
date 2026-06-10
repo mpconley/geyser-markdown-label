@@ -102,10 +102,28 @@ function MarkdownAdapter.render(markdown)
   local in_code_block = false
   local list_stack = {}
 
-  local function close_lists()
-    while #list_stack > 0 do
-      out[#out + 1] = "</" .. list_stack[#list_stack] .. ">"
+  local function close_lists(min_indent)
+    min_indent = min_indent or -1
+    while #list_stack > 0 and list_stack[#list_stack].indent >= min_indent do
+      out[#out + 1] = "</" .. list_stack[#list_stack].type .. ">"
       table.remove(list_stack)
+    end
+  end
+
+  local function ensure_list(list_type, indent)
+    while #list_stack > 0 and list_stack[#list_stack].indent > indent do
+      out[#out + 1] = "</" .. list_stack[#list_stack].type .. ">"
+      table.remove(list_stack)
+    end
+
+    if #list_stack > 0 and list_stack[#list_stack].indent == indent and list_stack[#list_stack].type ~= list_type then
+      out[#out + 1] = "</" .. list_stack[#list_stack].type .. ">"
+      table.remove(list_stack)
+    end
+
+    if #list_stack == 0 or list_stack[#list_stack].indent < indent or list_stack[#list_stack].type ~= list_type then
+      out[#out + 1] = "<" .. list_type .. ">"
+      list_stack[#list_stack + 1] = { type = list_type, indent = indent }
     end
   end
 
@@ -188,25 +206,17 @@ function MarkdownAdapter.render(markdown)
       goto continue
     end
 
-    local ordered_text = line:match("^%s*%d+%.%s+(.+)$")
+    local ordered_indent, ordered_text = line:match("^(%s*)%d+%.%s+(.+)$")
     if ordered_text then
-      if list_stack[#list_stack] ~= "ol" then
-        close_lists()
-        out[#out + 1] = "<ol>"
-        list_stack[#list_stack + 1] = "ol"
-      end
+      ensure_list("ol", #ordered_indent)
       out[#out + 1] = "<li>" .. parse_inline(ordered_text) .. "</li>"
       i = i + 1
       goto continue
     end
 
-    local unordered_text = line:match("^%s*[-%*+]%s+(.+)$")
+    local unordered_indent, unordered_text = line:match("^(%s*)[-%*+]%s+(.+)$")
     if unordered_text then
-      if list_stack[#list_stack] ~= "ul" then
-        close_lists()
-        out[#out + 1] = "<ul>"
-        list_stack[#list_stack + 1] = "ul"
-      end
+      ensure_list("ul", #unordered_indent)
       local task_checked, task_text = unordered_text:match("^%[([ xX])%]%s+(.+)$")
       if task_checked then
         local checkbox = task_checked:lower() == "x" and "☑ " or "☐ "
